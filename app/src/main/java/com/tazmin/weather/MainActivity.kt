@@ -61,7 +61,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 
-const val API_KEY = "d0eb34618ca44deb9da85210250701"
+const val API_KEY = "*"
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
