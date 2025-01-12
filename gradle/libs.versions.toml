@@ -1,6 +1,7 @@
 [versions]
 agp = "8.7.3"
 converterGson = "2.9.0"
+foundation = "VERSION"
 kotlin = "1.9.0"
 coreKtx = "1.15.0"
 junit = "4.13.2"
@@ -19,6 +20,7 @@ androidx-annotation = { module = "androidx.annotation:annotation" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat" }
 androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "foundation" }
 androidx-recyclerview = { module = "androidx.recyclerview:recyclerview" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 jetbrains-kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib" }

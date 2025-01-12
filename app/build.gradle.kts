@@ -54,6 +54,8 @@ dependencies {
     implementation(libs.converter.gson)
     implementation (libs.jetbrains.kotlin.stdlib)
     implementation (libs.kotlinx.coroutines.core)
+    implementation (libs.androidx.foundation)
+
 
     implementation(libs.okhttp)
     implementation(libs.androidx.core.ktx)
