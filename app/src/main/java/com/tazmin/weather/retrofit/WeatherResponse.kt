@@ -22,7 +22,11 @@ data class Current(
     val wind_kph: Double,
     val humidity: Int,
     val cloud: Int,
-    val feelslike_c: Double
+    val feelslike_c: Double,
+    val precip_mm: Double,
+    val ozone: Double,
+    val uv: Double
+
 )
 
 data class Condition(

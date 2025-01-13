@@ -2,11 +2,13 @@ package com.tazmin.weather
 
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,15 +50,16 @@ import com.tazmin.weather.retrofit.WeatherApi
 import com.tazmin.weather.ui.theme.Beige
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.graphics.Brush
-import com.tazmin.weather.ui.theme.Blue
-import kotlinx.coroutines.Dispatchers
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import com.tazmin.weather.retrofit.WeatherResponse
+import com.tazmin.weather.ui.theme.BeigeD
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -72,12 +75,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private suspend fun getTemp(city: String): String?{
+private suspend fun getWeatherData(city: String): WeatherResponse? {
     return try {
         val api = RetrofitClient.instance.create(WeatherApi::class.java)
-        val response = api.getWeather(apiKey = API_KEY, city)
-        response.current.temp_c.toString()
-    } catch (e: Exception){
+        api.getWeather(apiKey = API_KEY, city)
+    } catch (e: Exception) {
+        Log.e("WeatherError", "Ошибка при получении данных: ${e.message}")
         null
     }
 }
@@ -85,30 +88,58 @@ private suspend fun getTemp(city: String): String?{
 @Preview
 @Composable
 fun PreviewMyContent() {
-    var temperature by remember { mutableStateOf("Null") }
-    var city by remember { mutableStateOf("") }
-    val roundedFamily = FontFamily(
-        Font(R.font.yulong_regular)
+    var temperature by remember { mutableStateOf("N/A") }
+    var windKph by remember { mutableStateOf("N/A") }
+    var humidity by remember { mutableStateOf("N/A") }
+    var ozone by remember { mutableStateOf("N/A") }
+    var uvIndex by remember { mutableStateOf("N/A") }
+    var inputCity by remember { mutableStateOf("") }
+    var displayCity by remember { mutableStateOf("") }
+    var precip by remember { mutableStateOf("N/A") }
+    var feelLike by remember { mutableStateOf("N/A") }
+    val interFamily = FontFamily(
+        Font(R.font.inter_medium)
     )
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
             .padding(WindowInsets.statusBars.asPaddingValues())
             .background(
                 Brush.linearGradient(
-                colors = listOf(Beige, Color.Cyan),
-                start = androidx.compose.ui.geometry.Offset(0f, 240f),
-                end = androidx.compose.ui.geometry.Offset(1000f, 1000f)
-            ))
+                    colors = listOf(Beige, BeigeD),
+                    start = androidx.compose.ui.geometry.Offset(0f, 240f),
+                    end = androidx.compose.ui.geometry.Offset(1000f, 1000f)
+                )
+            )
     ) {
         CityInputField(
-            city = city,
-            onCityChange = { city = it },
-            fontFamily = roundedFamily,
-            onFetchTemperature = { newTemp ->
-                temperature = newTemp }
+            city = inputCity,
+            onCityChange = { inputCity = it },
+            fontFamily = interFamily,
+            onFetchWeatherData = { newTemp, newWind, newHumidity, newOzone, newUvIndex, newPrecip, newFellLike ->
+                temperature = newTemp
+                windKph = newWind
+                humidity = newHumidity
+                ozone = newOzone
+                uvIndex = newUvIndex
+                precip = newPrecip
+                feelLike = newFellLike
+            },
+            onCityConfirm = { displayCity = it}
         )
-        WeatherDisplay(city = city, temperature = temperature, fontFamily = roundedFamily)
+
+        WeatherDisplay(city = displayCity, temperature = temperature, fontFamily = interFamily)
+
+        InfoDisplay(
+            fontFamily = interFamily,
+            wind = windKph,
+            humidity = humidity,
+            ozone = ozone,
+            uvIndex = uvIndex,
+            precip = precip,
+            feelLike = feelLike
+        )
     }
 }
 
@@ -117,7 +148,8 @@ fun CityInputField(
     city: String,
     onCityChange: (String) -> Unit,
     fontFamily: FontFamily,
-    onFetchTemperature: (String) -> Unit
+    onFetchWeatherData: (String, String, String, String, String, String, String) -> Unit,
+    onCityConfirm: (String) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -130,7 +162,9 @@ fun CityInputField(
         Row {
             TextField(
                 value = city,
-                onValueChange = onCityChange,
+                onValueChange = { newCity ->
+                    onCityChange(newCity)
+                },
                 label = { Text("Введите город") },
                 placeholder = { Text("Например, Moscow") },
                 singleLine = true,
@@ -150,23 +184,28 @@ fun CityInputField(
                 modifier = Modifier
                     .weight(1f)
                     .heightIn(min = 56.dp)
+
             )
             Spacer(modifier = Modifier.width(8.dp))
             IconButton(
                 onClick = {
+                    onCityConfirm(city)
                     coroutineScope.launch {
-                        try {
-                            val temp = withContext(Dispatchers.IO) { getTemp(city) }
-                            temp?.let { onFetchTemperature(it) } ?: run {
-                                onFetchTemperature("Ошибка")
-                            }
-                        } catch (e: Exception) {
-                            onFetchTemperature("Ошибка")
-                        }
+                        val weatherData = getWeatherData(city)
+                        weatherData?.let {
+                            onFetchWeatherData(
+                                it.current.temp_c.toString(),
+                                it.current.wind_kph.toString(),
+                                it.current.humidity.toString(),
+                                it.current.ozone.toString(),
+                                it.current.uv.toString(),
+                                it.current.precip_mm.toString(),
+                                it.current.feelslike_c.toString()
+                            )
+                        } ?: onFetchWeatherData("Ошибка", "Ошибка", "Ошибка", "Ошибка", "Ошибка","Ошибка","Ошибка")
                     }
-                },
-                modifier = Modifier.size(56.dp)
-            ) {
+                }
+            )  {
                 val searchIcon = painterResource(id = R.drawable.ic_search)
                 Image(
                     painter = searchIcon,
@@ -191,7 +230,7 @@ fun WeatherDisplay(city: String, temperature: String, fontFamily: FontFamily) {
             Text(
                 text = city.ifEmpty { "Введите город" },
                 style = TextStyle(
-                    fontSize = 50.sp,
+                    fontSize = 35.sp,
                     fontFamily = fontFamily,
                     fontWeight = FontWeight.Normal,
                     color = Color.Black
@@ -200,12 +239,12 @@ fun WeatherDisplay(city: String, temperature: String, fontFamily: FontFamily) {
                 overflow = TextOverflow.Ellipsis
             )
             val currentDate = LocalDate.now()
-            val formatter = DateTimeFormatter.ofPattern("EEEE, MMMM dd", Locale("ru"))
+            val formatter = DateTimeFormatter.ofPattern("EEEE, dd MMMM ", Locale("ru"))
             val formattedDate = currentDate.format(formatter)
             Text(
                 text = formattedDate,
                 style = TextStyle(
-                    fontSize = 30.sp,
+                    fontSize = 20.sp,
                     fontFamily = fontFamily,
                     fontWeight = FontWeight.Normal,
                     color = Color.Gray
@@ -232,7 +271,7 @@ fun WeatherDisplay(city: String, temperature: String, fontFamily: FontFamily) {
                 Text(
                     text = "$temperature °C",
                     style = TextStyle(
-                        fontSize = 70.sp,
+                        fontSize = 40.sp,
                         fontFamily = fontFamily,
                         fontWeight = FontWeight.Normal,
                         color = Color.Black
@@ -242,8 +281,115 @@ fun WeatherDisplay(city: String, temperature: String, fontFamily: FontFamily) {
             }
         }
     }
+
+}
+@Composable
+fun InfoDisplay(
+    fontFamily: FontFamily,
+    wind: String,
+    humidity: String,
+    ozone: String,
+    uvIndex: String,
+    feelLike: String,
+    precip: String
+) {
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .background(
+                    color = Color.White.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(5.dp)
+                .fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.align(Alignment.Center)
+            ) {
+
+                WeatherRow(
+                    fontFamily = fontFamily,
+                    items = listOf(
+                        Triple(painterResource(R.drawable.ic_cloudrain), "Осадки", precip),
+                        Triple(painterResource(R.drawable.ic_wind), "Ветер", wind),
+                        Triple(painterResource(R.drawable.ic_humidity), "Влажность", humidity)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                WeatherRow(
+                    fontFamily = fontFamily,
+                    items = listOf(
+                        Triple(painterResource(R.drawable.ic_sunhorizon), "УФ индекс", uvIndex),
+                        Triple(painterResource(R.drawable.ic_thermometer), "Feels Like", feelLike),
+                        Triple(painterResource(R.drawable.ic_sunhorizon), "Озон", ozone)
+                    )
+                )
+            }
+        }
+    }
 }
 
+@Composable
+fun WeatherRow(
+    fontFamily: FontFamily,
+    items: List<Triple<Painter, String, String>>
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ){
+        items.forEach { (icon, label, value) ->
+            WeatherInfoBox(label, value, fontFamily, icon,Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+    }
+}
+
+@Composable
+fun WeatherInfoBox(
+    label: String,
+    value: String,
+    fontFamily: FontFamily,
+    icon: Painter,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.padding(16.dp)
+    ) {
+        Image(
+            painter = icon,
+            contentDescription = "icon",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(30.dp)
+        )
+        Text(
+            text = label,
+            style = TextStyle(
+                fontSize = 15.sp,
+                fontFamily = fontFamily,
+                fontWeight = FontWeight.Normal,
+                color = Color.Gray
+            )
+        )
+        Text(
+            text = value,
+            textAlign = TextAlign.Center,
+            style = TextStyle(
+                fontSize = 20.sp,
+                fontFamily = fontFamily,
+                fontWeight = FontWeight.Normal,
+                color = Color.Black
+            )
+        )
+    }
+}
 
 
 

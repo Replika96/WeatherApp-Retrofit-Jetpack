@@ -55,7 +55,7 @@ dependencies {
     implementation (libs.jetbrains.kotlin.stdlib)
     implementation (libs.kotlinx.coroutines.core)
     implementation (libs.androidx.foundation)
-
+    implementation(libs.coil.compose)
 
     implementation(libs.okhttp)
     implementation(libs.androidx.core.ktx)
